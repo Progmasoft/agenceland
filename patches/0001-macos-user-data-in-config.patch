@@ -1,0 +1,12 @@
+--- a/src/vs/platform/environment/node/userDataPath.ts
++++ b/src/vs/platform/environment/node/userDataPath.ts
+@@ -93,7 +93,8 @@
+ 			}
+ 			break;
+ 		case 'darwin':
+-			appDataPath = join(homedir(), 'Library', 'Application Support');
++			// Agenceland keeps its user data in ~/.config on macOS, as on Linux.
++			appDataPath = process.env['XDG_CONFIG_HOME'] || join(homedir(), '.config');
+ 			break;
+ 		case 'linux':
+ 			appDataPath = process.env['XDG_CONFIG_HOME'] || join(homedir(), '.config');
