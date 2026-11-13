@@ -30,7 +30,7 @@ Run `prepare.sh` again after removing `./vscode`.
 The tests of the scripts need only Node.js:
 
 ```bash
-node --test tests/
+node --test 'tests/**/*.test.mjs'
 ```
 
 ## Where Agenceland keeps its files

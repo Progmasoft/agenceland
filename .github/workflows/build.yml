@@ -39,7 +39,7 @@ jobs:
           --test-coverage-include='scripts/**'
           --test-reporter=spec --test-reporter-destination=stdout
           --test-reporter=lcov --test-reporter-destination=lcov.info
-          tests/
+          'tests/**/*.test.mjs'
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
