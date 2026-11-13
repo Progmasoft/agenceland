@@ -5,7 +5,9 @@
 # Builds the prepared ./vscode for one platform into ./VSCode-<platform>.
 # Usage: scripts/build.sh <platform>, such as linux-x64, darwin-arm64,
 # darwin-x64, win32-x64. Needs the Node.js version of upstream.json and
-# about 8 GB of memory.
+# about 8 GB of memory. Code - OSS installs with the pnpm version its
+# package.json names; it is run through npx, so nothing is installed
+# globally.
 set -euo pipefail
 
 platform=${1:?usage: scripts/build.sh <platform>}
@@ -18,8 +20,30 @@ if [ "$have" != "v$want" ]; then
   echo "error: Node.js $have; upstream.json needs v$want" >&2
   exit 1
 fi
+pnpm=$(node -e 'process.stdout.write(require(process.argv[1]).packageManager)' "$root/vscode/package.json")
+run_pnpm() {
+  npx --yes "$pnpm" "$@"
+}
 
-export NODE_OPTIONS=--max-old-space-size=8192
-npm ci
-npm run gulp "vscode-$platform-min"
+# What upstream's own build skips: Electron comes with the packaging step,
+# and the browsers and model runtimes are only for tests and features that
+# Agenceland does not build.
+export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+export ONNXRUNTIME_NODE_INSTALL=skip
+export FOUNDRY_LOCAL_SKIP_INSTALL=1
+
+# preinstall patches the V8 headers the native modules build against.
+run_pnpm run preinstall
+for attempt in 1 2 3; do
+  if run_pnpm install --frozen-lockfile; then
+    break
+  fi
+  if [ "$attempt" = 3 ]; then
+    echo "error: pnpm install failed three times" >&2
+    exit 1
+  fi
+  echo "pnpm install failed ($attempt); trying again" >&2
+done
+run_pnpm run gulp "vscode-$platform-min"
 echo "built $root/VSCode-$platform"

@@ -16,10 +16,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the Node.js version
+        id: upstream
+        run: echo "node=$(jq -r .node upstream.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.upstream.outputs.node }}
+
+      - name: Run the tests with coverage
+        run: >-
+          node --test --experimental-test-coverage
+          --test-coverage-include='scripts/**'
+          --test-reporter=spec --test-reporter-destination=stdout
+          --test-reporter=lcov --test-reporter-destination=lcov.info
+          tests/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: agenceland-coverage
+          path: lcov.info
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage:
+    name: Coverage upload
+    # Fork pull requests cannot receive the OIDC token Codecov needs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # The job that can get a token runs no code of the repository.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: agenceland-coverage
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          use_oidc: true
+          files: lcov.info
+          fail_ci_if_error: true
+
   linux-x64:
     name: Linux x64
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,6 +95,9 @@ jobs:
         run: scripts/prepare.sh
 
       - name: Build
+        env:
+          # Raises the GitHub API limit of the downloads the build makes.
+          GITHUB_TOKEN: ${{ github.token }}
         run: scripts/build.sh linux-x64
 
       - name: Check the product
@@ -58,3 +114,15 @@ jobs:
           name: Agenceland-linux-x64
           path: Agenceland-linux-x64.tar.gz
           retention-days: 7
+
+  required:
+    name: CI Required
+    if: always()
+    needs: [test, linux-x64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - env:
+          TEST: ${{ needs.test.result }}
+          BUILD: ${{ needs.linux-x64.result }}
+        run: test "$TEST" = success && test "$BUILD" = success

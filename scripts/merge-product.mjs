@@ -7,6 +7,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mergeProduct } from "./product.mjs";
 
 const checkout = process.argv[2];
 if (!checkout) {
@@ -18,5 +19,5 @@ const upstream = JSON.parse(readFileSync(target, "utf8"));
 const ours = JSON.parse(
   readFileSync(new URL("../product.json", import.meta.url), "utf8"),
 );
-writeFileSync(target, JSON.stringify({ ...upstream, ...ours }, null, "\t") + "\n");
+writeFileSync(target, JSON.stringify(mergeProduct(upstream, ours), null, "\t") + "\n");
 console.log(`merged ${Object.keys(ours).length} fields into ${target}`);
