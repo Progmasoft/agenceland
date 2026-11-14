@@ -54,64 +54,78 @@ async function describeContext(): Promise<string> {
 		return lines.join('\n');
 	}
 	for (const folder of folders) {
-		if (folder.uri.scheme !== 'file') {
-			lines.push('', `${folder.name}: not a local folder (${folder.uri.scheme}); Agenceland works on local projects.`);
-			continue;
-		}
-		// The instructions, settings and shared memory are those of the open
-		// worktree; the private memory and sessions are keyed on the main one.
-		const { worktree: project, main } = await projectOf(folder.uri.fsPath);
-		const directories = projectDirectories(p, home, main);
-		const instructions = findInstructions(
-			relative => isFile(path.join(project, relative)),
-			relative => isFile(path.join(user, relative)),
-		);
-		lines.push('', `Project ${folder.name}: ${project}`);
-		if (main !== project) {
-			lines.push(`  Main worktree: ${main}`);
-		}
-		lines.push(`  Instructions: ${instructions ? `${path.join(instructions.scope === 'user' ? user : project, instructions.file)} (${instructions.scope})` : 'none'}`);
-		lines.push(`  Private memory: ${directories.memory}`);
-		lines.push(`  Shared memory: ${path.join(project, '.agenceland', 'memory')}`);
-		lines.push(`  Session records: ${directories.sessions}`);
-
-		const layers: Settings[] = [];
-		for (const layer of settingsLayers) {
-			const file = path.join(layer.scope === 'user' ? user : project, layer.file);
-			const text = readText(file);
-			if (text === undefined) {
-				lines.push(`  Settings (${layer.scope}): ${file}, none`);
-				continue;
-			}
-			const parsed = parseSettings(text);
-			if (parsed.ok) {
-				layers.push(parsed.settings);
-				lines.push(`  Settings (${layer.scope}): ${file}, ${Object.keys(parsed.settings).length} key(s)`);
-			} else {
-				lines.push(`  Settings (${layer.scope}): ${file}, not read: ${parsed.errors.join('; ')}`);
-			}
-		}
-		lines.push(`  Settings in effect: ${Object.keys(mergeSettings(layers)).length} key(s)`);
+		lines.push('', ...await describeFolder(folder, p, home, user));
 	}
 	return lines.join('\n');
+}
+
+/** What an agent of one workspace folder would read and where it would write. */
+async function describeFolder(folder: vscode.WorkspaceFolder, p: Platform, home: string, user: string): Promise<string[]> {
+	if (folder.uri.scheme !== 'file') {
+		return [`${folder.name}: not a local folder (${folder.uri.scheme}); Agenceland works on local projects.`];
+	}
+	// The instructions, settings and shared memory are those of the open
+	// worktree; the private memory and sessions are keyed on the main one.
+	const { worktree: project, main } = await projectOf(folder.uri.fsPath);
+	const directories = projectDirectories(p, home, main);
+	const instructions = findInstructions(
+		relative => isFile(path.join(project, relative)),
+		relative => isFile(path.join(user, relative)),
+	);
+	const lines = [`Project ${folder.name}: ${project}`];
+	if (main !== project) {
+		lines.push(`  Main worktree: ${main}`);
+	}
+	const instructionsPath = instructions ? path.join(instructions.scope === 'user' ? user : project, instructions.file) : undefined;
+	lines.push(`  Instructions: ${instructions && instructionsPath ? `${instructionsPath} (${instructions.scope})` : 'none'}`);
+	lines.push(`  Private memory: ${directories.memory}`);
+	lines.push(`  Shared memory: ${path.join(project, '.agenceland', 'memory')}`);
+	lines.push(`  Session records: ${directories.sessions}`);
+	lines.push(...describeSettings(user, project));
+	return lines;
+}
+
+/** The settings layers of a project, each read or not, and how many keys are in effect. */
+function describeSettings(user: string, project: string): string[] {
+	const lines: string[] = [];
+	const layers: Settings[] = [];
+	for (const layer of settingsLayers) {
+		const file = path.join(layer.scope === 'user' ? user : project, layer.file);
+		const text = readText(file);
+		if (text === undefined) {
+			lines.push(`  Settings (${layer.scope}): ${file}, none`);
+			continue;
+		}
+		const parsed = parseSettings(text);
+		if (parsed.ok) {
+			layers.push(parsed.settings);
+			lines.push(`  Settings (${layer.scope}): ${file}, ${Object.keys(parsed.settings).length} key(s)`);
+		} else {
+			lines.push(`  Settings (${layer.scope}): ${file}, not read: ${parsed.errors.join('; ')}`);
+		}
+	}
+	lines.push(`  Settings in effect: ${Object.keys(mergeSettings(layers)).length} key(s)`);
+	return lines;
 }
 
 /**
  * The worktree a folder is in and the main worktree of its repository, both
  * canonical; outside Git both are the folder itself.
  */
-async function projectOf(folder: string): Promise<{ worktree: string; main: string }> {
-	try {
-		const top = await run('git', ['rev-parse', '--show-toplevel'], { cwd: folder });
-		const worktree = canonical(top.stdout.trim());
-		const list = await run('git', ['worktree', 'list', '--porcelain'], { cwd: folder });
-		const main = mainWorktreeFromList(list.stdout);
-		return { worktree, main: main === undefined ? worktree : canonical(main) };
-	} catch {
-		// Not in Git, or Git is not installed.
+function projectOf(folder: string): Promise<{ worktree: string; main: string }> {
+	const outsideGit = () => {
 		const itself = canonical(folder);
 		return { worktree: itself, main: itself };
-	}
+	};
+	return run('git', ['rev-parse', '--show-toplevel'], { cwd: folder })
+		.then(async top => {
+			const worktree = canonical(top.stdout.trim());
+			const list = await run('git', ['worktree', 'list', '--porcelain'], { cwd: folder });
+			const main = mainWorktreeFromList(list.stdout);
+			return { worktree, main: main === undefined ? worktree : canonical(main) };
+		})
+		// Not in Git, or Git is not installed.
+		.catch(outsideGit);
 }
 
 /** The path with its links resolved, or the path as it is when that fails. */
