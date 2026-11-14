@@ -1,0 +1,6 @@
+{
+  "displayName": "Agenceland",
+  "description": "The agents of Agenceland: their instructions, settings, memory and sessions.",
+  "untrustedWorkspaces": "Agents run commands and change files of the project, which a workspace that is not trusted must not allow.",
+  "command.showProjectContext": "Show Project Context"
+}
