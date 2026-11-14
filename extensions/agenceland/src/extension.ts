@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
-import { findProjectInstructions, userInstructionFile } from './core/instructions';
+import { findInstructions } from './core/instructions';
 import { agencelandHome, mainWorktreeOf, Platform, projectDirectories, userDirectory } from './core/paths';
 import { mergeSettings, parseSettings, Settings, settingsLayers } from './core/settings';
 
@@ -43,8 +43,6 @@ async function describeContext(): Promise<string> {
 	const home = agencelandHome(p, process.env, os.homedir());
 	const user = userDirectory(p, home);
 	const lines: string[] = [`Agenceland home: ${home}`, `User directory: ${user}`];
-	const userInstructions = path.join(user, userInstructionFile);
-	lines.push(`User instructions: ${isFile(userInstructions) ? userInstructions : 'none'}`);
 
 	const folders = vscode.workspace.workspaceFolders ?? [];
 	if (folders.length === 0) {
@@ -58,9 +56,12 @@ async function describeContext(): Promise<string> {
 		}
 		const project = await projectRoot(folder.uri.fsPath);
 		const directories = projectDirectories(p, home, project);
-		const instructions = findProjectInstructions(relative => isFile(path.join(project, relative)));
+		const instructions = findInstructions(
+			relative => isFile(path.join(project, relative)),
+			relative => isFile(path.join(user, relative)),
+		);
 		lines.push('', `Project ${folder.name}: ${project}`);
-		lines.push(`  Instructions: ${instructions ? path.join(project, instructions) : 'none'}`);
+		lines.push(`  Instructions: ${instructions ? `${path.join(instructions.scope === 'user' ? user : project, instructions.file)} (${instructions.scope})` : 'none'}`);
 		lines.push(`  Private memory: ${directories.memory}`);
 		lines.push(`  Shared memory: ${path.join(project, '.agenceland', 'memory')}`);
 		lines.push(`  Session records: ${directories.sessions}`);

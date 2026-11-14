@@ -46,9 +46,9 @@ npm test
 | Private project memory and session records | `~/.config/Agenceland/Projects/<key>/{memory/, sessions/}` | `%APPDATA%\Agenceland\Projects\<key>\...` |
 
 In a project, `.agenceland/` holds `settings.json` (shared), `settings.local.json` (yours, kept out of Git),
-`memory/` (shared), and `agents/`, `commands/`, `skills/`. The project's instructions are the first of
-`AGENCELAND.md`, `.agenceland/AGENCELAND.md`, `.agents/AGENCELAND.md`, `.claude/AGENCELAND.md`, or `AGENTS.md` when
-none exists. `<key>` is the path of the project's main worktree with every character other than a letter or digit
+`memory/` (shared), and `agents/`, `commands/`, `skills/`. An agent reads one instruction file, the first that exists
+of `AGENCELAND.md`, `.agenceland/AGENCELAND.md`, `.agents/AGENCELAND.md`, `.claude/AGENCELAND.md`, `AGENTS.md` in the
+project, and last the user's `AGENCELAND.md`; the places after it are not looked at. `<key>` is the path of the project's main worktree with every character other than a letter or digit
 turned into `-`, then `-` and 16 hexadecimal digits of its SHA-256. On Linux and macOS the separator before the
 project's own folder is `--`: `/home/ada/Projects/example` is `-home-ada-Projects--example-<hash>`. On Windows
 `C:\Users\Ada\source\repos\example` is `C--Users-Ada-source-repos-example-<hash>`.
