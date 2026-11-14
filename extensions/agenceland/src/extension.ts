@@ -46,7 +46,7 @@ async function describeContext(): Promise<string> {
 	// The extension is always on; trust decides whether its agents may act.
 	lines.push(vscode.workspace.isTrusted
 		? 'Workspace: trusted; agents may run commands and change files as the permission mode allows.'
-		: 'Workspace: not trusted; agents run no commands and change no files here.');
+		: 'Workspace: not trusted; there is no agent window here and no agent runs.');
 
 	const folders = vscode.workspace.workspaceFolders ?? [];
 	if (folders.length === 0) {
