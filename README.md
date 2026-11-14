@@ -1,7 +1,7 @@
 # Agenceland
 
 Agenceland is an agentic IDE built on Code - OSS, the open-source core of Visual Studio Code. Extensions come from
-[Open VSX](https://open-vsx.org).
+[Open VSX](https://open-vsx.org). The name comes from French: it joins *agence*, French for agency, and *land*.
 
 This repository does not carry a copy of Code - OSS. It names the upstream release it builds on and holds what
 Agenceland changes:
