@@ -56,3 +56,23 @@ test("product.json names Agenceland and Open VSX", () => {
     );
   }
 });
+
+test("Copilot keeps no rights and no updates", () => {
+  const trusted = JSON.stringify(ours.trustedExtensionAuthAccess);
+  assert.doesNotMatch(trusted, /copilot/i);
+  assert.deepEqual(ours.builtInExtensionsEnabledWithAutoUpdates, []);
+});
+
+test("removed-paths.txt names the Copilot extension and only relative paths", () => {
+  const paths = readFileSync(
+    new URL("../removed-paths.txt", import.meta.url),
+    "utf8",
+  )
+    .split("\n")
+    .map((line) => line.replace(/#.*/, "").trim())
+    .filter((line) => line.length > 0);
+  assert.ok(paths.includes("extensions/copilot"));
+  for (const path of paths) {
+    assert.doesNotMatch(path, /^\/|\.\./, `${path} stays inside the checkout`);
+  }
+});

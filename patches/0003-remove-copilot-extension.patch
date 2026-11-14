@@ -1,0 +1,61 @@
+--- a/build/npm/dirs.ts
++++ b/build/npm/dirs.ts
+@@ -41,7 +41,6 @@
+ 	'build',
+ 	'remote',
+ 	'extensions',
+-	'extensions/copilot',
+ ];
+ 
+ /**
+@@ -96,7 +95,6 @@
+ 		'extensions/vscode-colorize-perf-tests',
+ 		'extensions/vscode-test-resolver',
+ 	],
+-	'extensions/copilot': ['extensions/copilot/chat-lib'],
+ };
+ 
+ /**
+--- a/package.json
++++ b/package.json
+@@ -30,9 +30,8 @@
+     "check-cyclic-dependencies": "node build/lib/checkCyclicDependencies.ts out",
+     "preinstall": "node build/npm/preinstall.ts",
+     "postinstall": "node build/npm/postinstall.ts",
+-    "compile": "npm-run-all2 -lp compile-client compile-copilot",
++    "compile": "npm-run-all2 -lp compile-client",
+     "compile-client": "pnpm run gulp compile",
+-    "compile-copilot": "pnpm -C extensions/copilot run compile",
+     "build-fast": "node build/next/build-fast.ts",
+     "build-fast-extensions": "pnpm run gulp copy-codicons compile-extensions compile-extension-media",
+     "typecheck-client": "tsc --project ./src/tsconfig.json --noEmit --skipLibCheck",
+@@ -40,8 +39,8 @@
+     "codex:check-protocol": "node build/codex/check-protocol-sync.ts",
+     "agent-host:generate-copilot-meta": "node build/agentHost/generateCopilotMetadata.ts",
+     "agent-host:check-copilot-meta": "node build/agentHost/generateCopilotMetadata.ts --check",
+-    "watch": "npm-run-all2 -lp watch-client-transpile watch-client watch-extensions watch-copilot",
+-    "watch-transpile": "npm-run-all2 -lp watch-client-transpile watch-extensions watch-copilot",
++    "watch": "npm-run-all2 -lp watch-client-transpile watch-client watch-extensions",
++    "watch-transpile": "npm-run-all2 -lp watch-client-transpile watch-extensions",
+     "watchd": "deemon pnpm run watch",
+     "watch-webd": "deemon pnpm run watch-web",
+     "kill-watchd": "deemon --kill pnpm run watch",
+@@ -59,9 +58,6 @@
+     "watch-extensions": "pnpm run gulp watch-extensions watch-extension-media",
+     "watch-extensionsd": "deemon pnpm run watch-extensions",
+     "kill-watch-extensionsd": "deemon --kill pnpm run watch-extensions",
+-    "watch-copilot": "pnpm -C extensions/copilot run watch",
+-    "watch-copilotd": "deemon pnpm run watch-copilot",
+-    "kill-watch-copilotd": "deemon --kill pnpm run watch-copilot",
+     "precommit": "node --experimental-strip-types build/hygiene.ts",
+     "gulp": "node --experimental-strip-types --max-old-space-size=8192 ./node_modules/gulp/bin/gulp.js",
+     "electron": "node build/lib/electron.ts",
+@@ -98,8 +94,6 @@
+     "perf:css": "node .github/skills/auto-perf-optimize/scripts/workbench-css-performance.mts",
+     "perf:chat": "node scripts/chat-simulation/test-chat-perf-regression.js",
+     "perf:chat-leak": "node scripts/chat-simulation/test-chat-mem-leaks.js",
+-    "copilot:setup": "pnpm -C extensions/copilot run setup",
+-    "copilot:get_token": "pnpm -C extensions/copilot run get_token",
+     "update-build-ts-version": "pnpm add -w -D typescript@npm:@typescript/typescript6@^6.0.2 && pnpm add -w -D @typescript/native@npm:typescript@next && pnpm -C build run typecheck",
+     "install-local-component-explorer": "node build/npm/installWithoutSaving.ts . ../vscode-packages/js-component-explorer/dist/vscode-component-explorer-0.1.0.tgz ../vscode-packages/js-component-explorer/dist/vscode-component-explorer-cli-0.1.0.tgz -- build/rspack ../../../vscode-packages/js-component-explorer/dist/vscode-component-explorer-webpack-plugin-0.1.0.tgz -- build/vite ../../../vscode-packages/js-component-explorer/dist/vscode-component-explorer-vite-plugin-0.1.0.tgz",
+     "symlink-local-component-explorer": "node build/npm/installWithoutSaving.ts . ../vscode-packages/js-component-explorer/packages/explorer ../vscode-packages/js-component-explorer/packages/cli -- build/rspack ../../../vscode-packages/js-component-explorer/packages/webpack-plugin ../../../vscode-packages/js-component-explorer/packages/explorer -- build/vite ../../../vscode-packages/js-component-explorer/packages/vite-plugin ../../../vscode-packages/js-component-explorer/packages/explorer",
