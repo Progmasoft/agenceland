@@ -47,6 +47,12 @@ function encode(text: string): string {
 }
 
 /**
+ * The most characters of a project key's readable part. With the hash the
+ * key stays well below the 255 bytes a file system allows for one name.
+ */
+export const maxReadableKeyLength = 200;
+
+/**
  * The name of a project's directory below `Projects/`: the canonical path of
  * the project with every character that is not an ASCII letter or digit
  * turned into `-`, then `-` and the first 16 hexadecimal digits of the
@@ -64,6 +70,11 @@ export function projectKey(platform: Platform, canonicalPath: string): string {
 		if (last > 0) {
 			readable = `${encode(canonicalPath.slice(0, last))}--${encode(canonicalPath.slice(last + 1))}`;
 		}
+	}
+	// A longer path keeps its end, where the project's own folder is; the hash
+	// of the whole path still tells two projects apart.
+	if (readable.length > maxReadableKeyLength) {
+		readable = readable.slice(-maxReadableKeyLength);
 	}
 	const hash = createHash('sha256').update(canonicalPath, 'utf8').digest('hex').slice(0, 16);
 	return `${readable}-${hash}`;
@@ -86,14 +97,20 @@ export function projectDirectories(platform: Platform, agencelandHomePath: strin
 }
 
 /**
- * The project a Git repository belongs to, from its common directory (`git
- * rev-parse --git-common-dir`): the directory of the main worktree, so that
- * every session worktree of a repository shares one project memory. A bare
- * repository has no main worktree and is its own project.
+ * The main worktree of a repository, from the output of `git worktree list
+ * --porcelain`: its first entry, whatever the layout of the Git directory
+ * (a submodule, a separate Git directory, a bare repository). Every session
+ * worktree of a repository keys its private memory on it. `undefined` when
+ * the output names no worktree.
  */
-export function mainWorktreeOf(platform: Platform, gitCommonDirectory: string): string {
-	const p = pathOf(platform);
-	const normalized = p.normalize(gitCommonDirectory);
-	const trimmed = normalized.length > 1 && normalized.endsWith(p.sep) ? normalized.slice(0, -1) : normalized;
-	return p.basename(trimmed) === '.git' ? p.dirname(trimmed) : trimmed;
+export function mainWorktreeFromList(porcelain: string): string | undefined {
+	for (const line of porcelain.split(/\r?\n/)) {
+		if (line.startsWith('worktree ')) {
+			return line.slice('worktree '.length);
+		}
+		if (line.trim() !== '') {
+			return undefined;
+		}
+	}
+	return undefined;
 }

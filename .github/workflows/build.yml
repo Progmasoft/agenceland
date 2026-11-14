@@ -102,10 +102,9 @@ jobs:
       - name: Prepare Code - OSS
         run: scripts/prepare.sh
 
+      # No token in the environment: pull-request code and install scripts
+      # run in this step.
       - name: Build
-        env:
-          # Raises the GitHub API limit of the downloads the build makes.
-          GITHUB_TOKEN: ${{ github.token }}
         run: scripts/build.sh linux-x64
 
       # The product build transpiles the workbench without type-checking it;

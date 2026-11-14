@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { promisify } from 'node:util';
 import * as vscode from 'vscode';
 import { findInstructions } from './core/instructions';
-import { agencelandHome, mainWorktreeOf, Platform, projectDirectories, userDirectory } from './core/paths';
+import { agencelandHome, mainWorktreeFromList, Platform, projectDirectories, userDirectory } from './core/paths';
 import { mergeSettings, parseSettings, Settings, settingsLayers } from './core/settings';
 
 const run = promisify(execFile);
@@ -58,13 +58,18 @@ async function describeContext(): Promise<string> {
 			lines.push('', `${folder.name}: not a local folder (${folder.uri.scheme}); Agenceland works on local projects.`);
 			continue;
 		}
-		const project = await projectRoot(folder.uri.fsPath);
-		const directories = projectDirectories(p, home, project);
+		// The instructions, settings and shared memory are those of the open
+		// worktree; the private memory and sessions are keyed on the main one.
+		const { worktree: project, main } = await projectOf(folder.uri.fsPath);
+		const directories = projectDirectories(p, home, main);
 		const instructions = findInstructions(
 			relative => isFile(path.join(project, relative)),
 			relative => isFile(path.join(user, relative)),
 		);
 		lines.push('', `Project ${folder.name}: ${project}`);
+		if (main !== project) {
+			lines.push(`  Main worktree: ${main}`);
+		}
 		lines.push(`  Instructions: ${instructions ? `${path.join(instructions.scope === 'user' ? user : project, instructions.file)} (${instructions.scope})` : 'none'}`);
 		lines.push(`  Private memory: ${directories.memory}`);
 		lines.push(`  Shared memory: ${path.join(project, '.agenceland', 'memory')}`);
@@ -92,16 +97,29 @@ async function describeContext(): Promise<string> {
 }
 
 /**
- * The project a folder belongs to: the main worktree of its Git repository,
- * so that the session worktrees of a repository share one project, or the
- * folder itself outside Git. Either way its canonical path, links resolved.
+ * The worktree a folder is in and the main worktree of its repository, both
+ * canonical; outside Git both are the folder itself.
  */
-async function projectRoot(folder: string): Promise<string> {
+async function projectOf(folder: string): Promise<{ worktree: string; main: string }> {
 	try {
-		const { stdout } = await run('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: folder });
-		return fs.realpathSync.native(mainWorktreeOf(platform(), stdout.trim()));
+		const top = await run('git', ['rev-parse', '--show-toplevel'], { cwd: folder });
+		const worktree = canonical(top.stdout.trim());
+		const list = await run('git', ['worktree', 'list', '--porcelain'], { cwd: folder });
+		const main = mainWorktreeFromList(list.stdout);
+		return { worktree, main: main === undefined ? worktree : canonical(main) };
 	} catch {
-		return fs.realpathSync.native(folder);
+		// Not in Git, or Git is not installed.
+		const itself = canonical(folder);
+		return { worktree: itself, main: itself };
+	}
+}
+
+/** The path with its links resolved, or the path as it is when that fails. */
+function canonical(file: string): string {
+	try {
+		return fs.realpathSync.native(file);
+	} catch {
+		return file;
 	}
 }
 

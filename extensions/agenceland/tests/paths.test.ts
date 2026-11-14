@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { agencelandHome, mainWorktreeOf, projectDirectories, projectKey, userDirectory } from '../src/core/paths.ts';
+import { agencelandHome, mainWorktreeFromList, maxReadableKeyLength, projectDirectories, projectKey, userDirectory } from '../src/core/paths.ts';
 
 test('the home follows each platform', () => {
 	assert.equal(agencelandHome('linux', {}, '/home/ada'), '/home/ada/.config/Agenceland');
@@ -34,6 +34,16 @@ test('a project key reads like the path and carries its hash', () => {
 	assert.equal(projectKey('linux', '/home/ada/Projects/example'), linux, 'the key is stable');
 });
 
+test('a long path keeps the end of its readable part and stays one valid name', () => {
+	const deep = `/home/ada/${Array.from({ length: 40 }, (_, i) => `directory${i}`).join('/')}/example`;
+	const key = projectKey('linux', deep);
+	assert.ok(Buffer.byteLength(key) < 255, `${key.length} bytes`);
+	assert.equal(key.length, maxReadableKeyLength + 17);
+	assert.match(key, /-directory39--example-[\da-f]{16}$/);
+	const other = projectKey('linux', deep.replace('directory0', 'directoryX'));
+	assert.notEqual(key, other, 'paths that differ before the cut still differ');
+});
+
 test('project directories sit below Projects/<key>', () => {
 	const directories = projectDirectories('linux', '/h/.config/Agenceland', '/src/app');
 	assert.equal(directories.root, `/h/.config/Agenceland/Projects/${projectKey('linux', '/src/app')}`);
@@ -43,9 +53,23 @@ test('project directories sit below Projects/<key>', () => {
 	assert.equal(windows.memory, `C:\\A\\Agenceland\\Projects\\${projectKey('win32', 'C:\\src\\app')}\\memory`);
 });
 
-test('every worktree of a repository is the project of its main worktree', () => {
-	assert.equal(mainWorktreeOf('linux', '/src/app/.git'), '/src/app');
-	assert.equal(mainWorktreeOf('linux', '/src/app/.git/'), '/src/app');
-	assert.equal(mainWorktreeOf('linux', '/srv/git/app.git'), '/srv/git/app.git', 'a bare repository is its own project');
-	assert.equal(mainWorktreeOf('win32', 'C:\\src\\app\\.git'), 'C:\\src\\app');
+test('the main worktree is the first entry of git worktree list', () => {
+	const list = [
+		'worktree /src/app',
+		'HEAD 1a2b3c',
+		'branch refs/heads/main',
+		'',
+		'worktree /home/ada/.config/Agenceland/Projects/x/worktrees/s1',
+		'HEAD 4d5e6f',
+		'branch refs/heads/agenceland/s1',
+		'',
+	].join('\n');
+	assert.equal(mainWorktreeFromList(list), '/src/app');
+	// A submodule or a separate Git directory lists its checkout; a bare
+	// repository lists itself, marked bare.
+	assert.equal(mainWorktreeFromList('worktree /super/libs/sub\nHEAD 1\ndetached\n'), '/super/libs/sub');
+	assert.equal(mainWorktreeFromList('worktree /srv/git/app.git\nbare\n'), '/srv/git/app.git');
+	assert.equal(mainWorktreeFromList('worktree C:/src/app\r\nHEAD 1\r\n'), 'C:/src/app');
+	assert.equal(mainWorktreeFromList(''), undefined);
+	assert.equal(mainWorktreeFromList('fatal: not a git repository\n'), undefined);
 });
