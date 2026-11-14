@@ -5,9 +5,10 @@
 # Builds the prepared ./vscode for one platform into ./VSCode-<platform>.
 # Usage: scripts/build.sh <platform>, such as linux-x64, darwin-arm64,
 # darwin-x64, win32-x64. Needs the Node.js version of upstream.json and
-# about 8 GB of memory. Code - OSS installs with the pnpm version its
-# package.json names; it is run through npx, so nothing is installed
-# globally.
+# about 8 GB of memory. Code - OSS installs with the pnpm its package.json
+# names in packageManager; Corepack, which comes with Node.js 24, runs that
+# version and checks its hash when the field carries one. Nothing is
+# installed globally.
 set -euo pipefail
 
 platform=${1:?usage: scripts/build.sh <platform>}
@@ -20,10 +21,11 @@ if [ "$have" != "v$want" ]; then
   echo "error: Node.js $have; upstream.json needs v$want" >&2
   exit 1
 fi
-pnpm=$(node -e 'process.stdout.write(require(process.argv[1]).packageManager)' "$root/vscode/package.json")
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 run_pnpm() {
-  npx --yes "$pnpm" "$@"
+  corepack pnpm "$@"
 }
+echo "pnpm $(run_pnpm --version), as vscode/package.json names it"
 
 # What upstream's own build skips: Electron comes with the packaging step,
 # and the browsers and model runtimes are only for tests and features that
