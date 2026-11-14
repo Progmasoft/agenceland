@@ -108,6 +108,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: scripts/build.sh linux-x64
 
+      # The product build transpiles the workbench without type-checking it;
+      # this checks what patches/ changed in it.
+      - name: Type-check the patched sources
+        working-directory: vscode
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: corepack pnpm run typecheck-client
+
       - name: Check the product
         run: |
           test -x VSCode-linux-x64/bin/agenceland
@@ -117,6 +125,7 @@ jobs:
           jq -e '.name == "agenceland" and (.main | startswith("./dist/"))' \
             VSCode-linux-x64/resources/app/extensions/agenceland/package.json
           test -f VSCode-linux-x64/resources/app/extensions/agenceland/dist/extension.js
+          jq -e '.agencelandCoreExtensions == ["progmasoft.agenceland"]' VSCode-linux-x64/resources/app/product.json
 
       - name: Pack
         run: tar -czf Agenceland-linux-x64.tar.gz VSCode-linux-x64

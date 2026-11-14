@@ -1,6 +1,7 @@
 {
   "displayName": "Agenceland",
   "description": "The agents of Agenceland: their instructions, settings, memory and sessions.",
-  "untrustedWorkspaces": "Agents run commands and change files of the project, which a workspace that is not trusted must not allow.",
-  "command.showProjectContext": "Show Project Context"
+  "untrustedWorkspaces": "Agenceland is part of the product and stays on, but in a workspace that is not trusted its agents run no commands and change no files.",
+  "command.showProjectContext": "Show Project Context",
+  "virtualWorkspaces": "Agents work on local folders; in a virtual workspace they show what they would read but do not run."
 }

@@ -11,9 +11,12 @@
   "main": "./out/extension.js",
   "activationEvents": [],
   "capabilities": {
-    "virtualWorkspaces": false,
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "%virtualWorkspaces%"
+    },
     "untrustedWorkspaces": {
-      "supported": false,
+      "supported": "limited",
       "description": "%untrustedWorkspaces%"
     }
   },

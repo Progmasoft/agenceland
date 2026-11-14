@@ -12,7 +12,7 @@ Agenceland changes:
 | `product.json` | The fields of the Code - OSS `product.json` that Agenceland replaces: names, identifiers, Open VSX. |
 | `patches/` | Changes to the Code - OSS sources, applied in name order. |
 | `removed-paths.txt` | Paths of Code - OSS that Agenceland does not ship, such as the built-in GitHub Copilot extension. |
-| `extensions/` | The built-in extensions of Agenceland, added to those of Code - OSS. `agenceland` holds its agents. |
+| `extensions/` | The built-in extensions of Agenceland, added to those of Code - OSS. `agenceland` holds its agents; it is part of the product (`agencelandCoreExtensions` in `product.json`), so it is always on, cannot be disabled, and is not listed in the Extensions view. |
 | `scripts/` | `prepare.sh` fetches and patches the sources; `build.sh` builds them for one platform. |
 | `tests/` | Tests of the scripts, run with `node --test`. |
 

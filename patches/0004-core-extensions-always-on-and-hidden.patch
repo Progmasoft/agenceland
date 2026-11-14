@@ -1,0 +1,78 @@
+--- a/src/vs/base/common/product.ts
++++ b/src/vs/base/common/product.ts
+@@ -262,6 +262,12 @@
+ 	}>;
+ 	readonly extensionsForceVersionByQuality?: readonly string[];
+ 	readonly builtInExtensionsEnabledWithAutoUpdates: readonly string[];
++	/**
++	 * Agenceland: built-in extensions that are part of the product itself.
++	 * They are always enabled, cannot be disabled, and are not listed in the
++	 * Extensions view.
++	 */
++	readonly agencelandCoreExtensions?: readonly string[];
+ 	readonly sessionsWindowAllowedExtensions?: readonly string[];
+ 
+ 	readonly msftInternalDomains?: string[];
+--- a/src/vs/workbench/services/extensionManagement/browser/extensionEnablementService.ts
++++ b/src/vs/workbench/services/extensionManagement/browser/extensionEnablementService.ts
+@@ -62,6 +62,9 @@
+ 	private readonly _chatExtensionId: string | undefined;
+ 	private _extensionUnificationEnabled: boolean;
+ 
++	// Agenceland: extensions that are part of the product, always enabled.
++	private readonly _coreExtensions: ReadonlySet<string>;
++
+ 	private _maliciousExtensionsCache: ReadonlyArray<MaliciousExtensionInfo> | undefined;
+ 
+ 	constructor(
+@@ -110,6 +113,8 @@
+ 		// Invalidate the cached malicious extensions list when the stored value changes.
+ 		this._register(this.storageService.onDidChangeValue(StorageScope.APPLICATION, MALICIOUS_EXTENSIONS_STORAGE_KEY, this._store)(() => this._maliciousExtensionsCache = undefined));
+ 
++		this._coreExtensions = new Set((productService.agencelandCoreExtensions ?? []).map(id => id.toLowerCase()));
++
+ 		// Extension unification
+ 		this._completionsExtensionId = productService.defaultChatAgent?.extensionId.toLowerCase();
+ 		this._chatExtensionId = productService.defaultChatAgent?.chatExtensionId.toLowerCase();
+@@ -260,6 +265,10 @@
+ 	}
+ 
+ 	private throwErrorIfCannotChangeEnablement(extension: IExtension, donotCheckDependencies?: boolean): void {
++		if (this._coreExtensions.has(extension.identifier.id.toLowerCase())) {
++			throw new Error(localize('cannot disable agenceland core extension', "Cannot change enablement of {0} extension because it is part of Agenceland.", extension.manifest.displayName || extension.identifier.id));
++		}
++
+ 		if (isLanguagePackExtension(extension.manifest)) {
+ 			throw new Error(localize('cannot disable language pack extension', "Cannot change enablement of {0} extension because it contributes language packs.", extension.manifest.displayName || extension.identifier.id));
+ 		}
+@@ -458,6 +467,13 @@
+ 			return enablementState;
+ 		}
+ 
++		// Agenceland: a core extension is enabled whatever a profile, a
++		// workspace, --disable-extensions or extension bisect says.
++		if (extension.isBuiltin && this._coreExtensions.has(extension.identifier.id.toLowerCase())) {
++			computedEnablementStates.set(extension, EnablementState.EnabledGlobally);
++			return EnablementState.EnabledGlobally;
++		}
++
+ 		// Ensure the chat extension is disabled in fresh profiles where chat setup is not completed.
+ 		// This is called here (in addition to the constructor) because on profile switch the
+ 		// enablement service is not recreated, but the storage scope changes to the new profile.
+--- a/src/vs/workbench/contrib/extensions/browser/extensionsWorkbenchService.ts
++++ b/src/vs/workbench/contrib/extensions/browser/extensionsWorkbenchService.ts
+@@ -1485,8 +1485,14 @@
+ 	get installed(): IExtension[] {
+ 		if (!this._installed) {
+ 			this._installed = [];
++			// Agenceland: its core extensions are part of the product and are
++			// not shown as extensions.
++			const core = new Set((this.productService.agencelandCoreExtensions ?? []).map(id => id.toLowerCase()));
+ 			for (const extensions of this.extensionsServers) {
+ 				for (const extension of extensions.local) {
++					if (extension.isBuiltin && core.has(extension.identifier.id.toLowerCase())) {
++						continue;
++					}
+ 					this._installed.push(extension);
+ 				}
+ 			}
