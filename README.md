@@ -11,7 +11,9 @@ Agenceland changes:
 | `upstream.json` | The Code - OSS release tag, its commit, and the Node.js version that release needs. |
 | `product.json` | The fields of the Code - OSS `product.json` that Agenceland replaces: names, identifiers, Open VSX. |
 | `patches/` | Changes to the Code - OSS sources, applied in name order. |
+| `removed-paths.txt` | Paths of Code - OSS that Agenceland does not ship, such as the built-in GitHub Copilot extension. |
 | `scripts/` | `prepare.sh` fetches and patches the sources; `build.sh` builds them for one platform. |
+| `tests/` | Tests of the scripts, run with `node --test`. |
 
 ## Building
 
@@ -25,6 +27,12 @@ scripts/build.sh linux-x64    # builds ./VSCode-linux-x64; also darwin-arm64, da
 ```
 
 Run `prepare.sh` again after removing `./vscode`.
+
+The tests of the scripts need only Node.js:
+
+```bash
+node --test 'tests/**/*.test.mjs'
+```
 
 ## Where Agenceland keeps its files
 

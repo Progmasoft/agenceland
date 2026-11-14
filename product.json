@@ -36,5 +36,9 @@
     "controlUrl": "",
     "nlsBaseUrl": ""
   },
-  "linkProtectionTrustedDomains": ["https://open-vsx.org", "https://progmasoft.com"]
+  "linkProtectionTrustedDomains": ["https://open-vsx.org", "https://progmasoft.com"],
+  "trustedExtensionAuthAccess": {
+    "microsoft": ["vscode.github-authentication"]
+  },
+  "builtInExtensionsEnabledWithAutoUpdates": []
 }

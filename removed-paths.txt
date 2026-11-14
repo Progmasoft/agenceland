@@ -1,0 +1,6 @@
+# Paths of the Code - OSS checkout that scripts/prepare.sh removes after
+# applying patches/, one relative path per line.
+
+# The built-in GitHub Copilot extension: Agenceland ships its own agent.
+# patches/0003 takes it out of the install roots and the scripts.
+extensions/copilot

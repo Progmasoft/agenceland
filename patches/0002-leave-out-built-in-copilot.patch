@@ -1,0 +1,19 @@
+--- a/build/gulpfile.vscode.ts
++++ b/build/gulpfile.vscode.ts
+@@ -604,7 +604,7 @@
+ 			compileNativeExtensionsBuildTask,
+ 			util.rimraf(path.join(buildRoot, destinationFolderName)),
+ 			packageTask(platform, arch, sourceFolderName, destinationFolderName, opts),
+-			prepareCopilotRipgrepShimTask(platform, arch, destinationFolderName)
++			// Agenceland ships its own agent, not the built-in Copilot extension.
+ 		];
+ 
+ 		if (platform === 'win32') {
+@@ -631,7 +631,6 @@
+ 			copyCodiconsTask,
+ 			cleanExtensionsBuildTask,
+ 			compileNonNativeExtensionsBuildTask,
+-			compileCopilotExtensionBuildTask,
+ 			compileExtensionMediaBuildTask,
+ 			writeISODate('out-build'),
+ 			esbuildBundleTask,

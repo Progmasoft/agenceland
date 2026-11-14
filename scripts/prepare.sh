@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT
 #
 # Fetches the Code - OSS commit named in upstream.json into ./vscode, checks
-# that it is that commit, applies patches/ and merges product.json.
+# that it is that commit, applies patches/, removes what removed-paths.txt
+# lists and merges product.json.
 # Usage: scripts/prepare.sh
 set -euo pipefail
 
@@ -35,5 +36,24 @@ git -C vscode -c advice.detachedHead=false checkout -q "$commit"
 for patch in patches/*.patch; do
   git -C vscode apply --verbose "$root/$patch"
 done
+
+# removed-paths.txt: one path of the checkout per line; # starts a comment.
+while IFS= read -r line; do
+  line=${line%%#*}
+  line=$(printf '%s' "$line" | tr -d '[:space:]')
+  [ -n "$line" ] || continue
+  case "$line" in
+    /* | *..*)
+      echo "error: removed-paths.txt: '$line' is not a relative path inside the checkout" >&2
+      exit 1
+      ;;
+  esac
+  if [ ! -e "vscode/$line" ]; then
+    echo "error: removed-paths.txt: vscode/$line does not exist" >&2
+    exit 1
+  fi
+  rm -rf -- "vscode/$line"
+  echo "removed vscode/$line"
+done < removed-paths.txt
 node scripts/merge-product.mjs vscode
 echo "prepared Code - OSS $tag ($commit) in $root/vscode"

@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+# ./vscode and the VSCode-* builds are generated from Code - OSS and are not
+# in the repository.
+exclude_paths:
+  - "vscode/**"
+  - "VSCode-*/**"
