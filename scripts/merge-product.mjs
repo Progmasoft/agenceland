@@ -6,7 +6,7 @@
 // Usage: node scripts/merge-product.mjs <checkout>
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { resolve } from "node:path";
 import { mergeProduct } from "./product.mjs";
 
 const checkout = process.argv[2];
@@ -14,10 +14,15 @@ if (!checkout) {
   console.error("usage: node scripts/merge-product.mjs <checkout>");
   process.exit(2);
 }
-const target = join(checkout, "product.json");
+// The checkout is the directory scripts/prepare.sh made; its product.json is
+// the one file this script writes.
+const target = resolve(checkout, "product.json");
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- the checkout named on the command line
 const upstream = JSON.parse(readFileSync(target, "utf8"));
 const ours = JSON.parse(
   readFileSync(new URL("../product.json", import.meta.url), "utf8"),
 );
-writeFileSync(target, JSON.stringify(mergeProduct(upstream, ours), null, "\t") + "\n");
+const merged = JSON.stringify(mergeProduct(upstream, ours), null, "\t");
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- the checkout named on the command line
+writeFileSync(target, `${merged}\n`);
 console.log(`merged ${Object.keys(ours).length} fields into ${target}`);

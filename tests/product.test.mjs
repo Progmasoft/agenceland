@@ -19,7 +19,10 @@ test("our fields replace upstream's and the rest is kept", () => {
   const merged = mergeProduct(upstream, ours);
   assert.equal(merged.nameShort, "Agenceland");
   assert.deepEqual(merged.builtInExtensions, upstream.builtInExtensions);
-  assert.equal(merged.extensionsGallery.serviceUrl, "https://open-vsx.org/vscode/gallery");
+  assert.equal(
+    merged.extensionsGallery.serviceUrl,
+    "https://open-vsx.org/vscode/gallery",
+  );
   assert.equal(upstream.nameShort, "Code - OSS", "upstream is not changed");
 });
 
@@ -41,8 +44,15 @@ test("product.json names Agenceland and Open VSX", () => {
     ours.win32x64UserAppId,
     ours.win32arm64UserAppId,
   ];
-  assert.equal(new Set(appIds).size, appIds.length, "every Windows AppId differs");
+  assert.equal(
+    new Set(appIds).size,
+    appIds.length,
+    "every Windows AppId differs",
+  );
   for (const id of appIds) {
-    assert.match(id, /^\{\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}$/);
+    assert.match(
+      id,
+      /^\{\{[\dA-F]{8}-[\dA-F]{4}-[\dA-F]{4}-[\dA-F]{4}-[\dA-F]{12}\}$/,
+    );
   }
 });
