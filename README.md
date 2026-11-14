@@ -12,6 +12,7 @@ Agenceland changes:
 | `product.json` | The fields of the Code - OSS `product.json` that Agenceland replaces: names, identifiers, Open VSX. |
 | `patches/` | Changes to the Code - OSS sources, applied in name order. |
 | `removed-paths.txt` | Paths of Code - OSS that Agenceland does not ship, such as the built-in GitHub Copilot extension. |
+| `extensions/` | The built-in extensions of Agenceland, added to those of Code - OSS. `agenceland` holds its agents; it is part of the product (`agencelandCoreExtensions` in `product.json`), so it is always on, cannot be disabled, and is not listed in the Extensions view. |
 | `scripts/` | `prepare.sh` fetches and patches the sources; `build.sh` builds them for one platform. |
 | `tests/` | Tests of the scripts, run with `node --test`. |
 
@@ -28,10 +29,12 @@ scripts/build.sh linux-x64    # builds ./VSCode-linux-x64; also darwin-arm64, da
 
 Run `prepare.sh` again after removing `./vscode`.
 
-The tests of the scripts need only Node.js:
+The tests and the type check need only Node.js:
 
 ```bash
-node --test 'tests/**/*.test.mjs'
+npm ci
+npm run typecheck   # the extensions, with the compiler options of Code - OSS
+npm test
 ```
 
 ## Where Agenceland keeps its files
@@ -39,6 +42,18 @@ node --test 'tests/**/*.test.mjs'
 | | Linux and macOS | Windows |
 |---|---|---|
 | User settings | `~/.config/Agenceland/User/settings.json` | `%APPDATA%\Agenceland\User\settings.json` |
+| User instructions, memory, skills, commands, agents | `~/.config/Agenceland/User/{AGENCELAND.md, memory/, skills/, commands/, agents/}` | `%APPDATA%\Agenceland\User\...` |
+| Private project memory and session records | `~/.config/Agenceland/Projects/<key>/{memory/, sessions/}` | `%APPDATA%\Agenceland\Projects\<key>\...` |
+
+In a project, `.agenceland/` holds `settings.json` (shared), `settings.local.json` (yours, kept out of Git),
+`memory/` (shared), and `agents/`, `commands/`, `skills/`. An agent reads one instruction file, the first that exists
+of `AGENCELAND.md`, `.agenceland/AGENCELAND.md`, `.agents/AGENCELAND.md`, `.claude/AGENCELAND.md`, `AGENTS.md` in the
+project, and last the user's `AGENCELAND.md`; the places after it are not looked at. `<key>` is the path of the project's main worktree with every character other than a letter or digit
+turned into `-`, then `-` and 16 hexadecimal digits of its SHA-256; a readable part longer than 200 characters keeps its
+last 200. On Linux and macOS the separator before the
+project's own folder is `--`: `/home/ada/Projects/example` is `-home-ada-Projects--example-<hash>`. On Windows
+`C:\Users\Ada\source\repos\example` is `C--Users-Ada-source-repos-example-<hash>`.
+The command **Agenceland: Show Project Context** shows all of them for the open folders.
 
 On Linux, `$XDG_CONFIG_HOME` replaces `~/.config` when it is set; on macOS Agenceland also uses `~/.config`, not
 `~/Library/Application Support`.

@@ -1,0 +1,25 @@
+{
+  // The options of Code - OSS's extensions/tsconfig.base.json (1.146.0), so
+  // that the extension type-checks here as it does in the product build;
+  // vscode.d.ts comes from @types/vscode of the same version.
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "commonjs",
+    "strict": true,
+    "exactOptionalPropertyTypes": false,
+    "useUnknownInCatchVariables": false,
+    "alwaysStrict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "noEmit": true,
+    "types": ["node", "vscode"]
+  },
+  "include": ["extensions/agenceland/src/**/*"]
+}

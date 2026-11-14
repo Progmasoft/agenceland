@@ -4,7 +4,7 @@
 #
 # Fetches the Code - OSS commit named in upstream.json into ./vscode, checks
 # that it is that commit, applies patches/, removes what removed-paths.txt
-# lists and merges product.json.
+# lists, adds the extensions of extensions/ and merges product.json.
 # Usage: scripts/prepare.sh
 set -euo pipefail
 
@@ -55,5 +55,19 @@ while IFS= read -r line; do
   rm -rf -- "vscode/$line"
   echo "removed vscode/$line"
 done < removed-paths.txt
+
+# The built-in extensions of Agenceland go next to those of Code - OSS, whose
+# build compiles and bundles every extensions/*/package.json.
+for extension in extensions/*/; do
+  name=$(basename "$extension")
+  if [ -e "vscode/extensions/$name" ]; then
+    echo "error: vscode/extensions/$name exists in Code - OSS" >&2
+    exit 1
+  fi
+  mkdir "vscode/extensions/$name"
+  (cd "$extension" && tar --exclude=./node_modules --exclude=./tests -cf - .) |
+    tar -xf - -C "vscode/extensions/$name"
+  echo "added vscode/extensions/$name"
+done
 node scripts/merge-product.mjs vscode
 echo "prepared Code - OSS $tag ($commit) in $root/vscode"
