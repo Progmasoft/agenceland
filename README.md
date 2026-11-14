@@ -49,7 +49,9 @@ In a project, `.agenceland/` holds `settings.json` (shared), `settings.local.jso
 `memory/` (shared), and `agents/`, `commands/`, `skills/`. The project's instructions are the first of
 `AGENCELAND.md`, `.agenceland/AGENCELAND.md`, `.agents/AGENCELAND.md`, `.claude/AGENCELAND.md`, or `AGENTS.md` when
 none exists. `<key>` is the path of the project's main worktree with every character other than a letter or digit
-turned into `-`, then `-` and 16 hexadecimal digits of its SHA-256, such as `-home-ada-Projects-example-1a2b3c4d5e6f7a8b`.
+turned into `-`, then `-` and 16 hexadecimal digits of its SHA-256. On Linux and macOS the separator before the
+project's own folder is `--`: `/home/ada/Projects/example` is `-home-ada-Projects--example-<hash>`. On Windows
+`C:\Users\Ada\source\repos\example` is `C--Users-Ada-source-repos-example-<hash>`.
 The command **Agenceland: Show Project Context** shows all of them for the open folders.
 
 On Linux, `$XDG_CONFIG_HOME` replaces `~/.config` when it is set; on macOS Agenceland also uses `~/.config`, not

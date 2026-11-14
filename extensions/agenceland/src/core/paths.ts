@@ -40,15 +40,29 @@ export function userDirectory(platform: Platform, agencelandHomePath: string): s
 	return pathOf(platform).join(agencelandHomePath, 'User');
 }
 
+function encode(text: string): string {
+	return text.replace(/[^A-Za-z0-9]/g, '-');
+}
+
 /**
- * The name of a project's directory below `Projects/`: every character of the
- * canonical path of the project that is not an ASCII letter or digit becomes
- * `-`, followed by `-` and the first 16 hexadecimal digits of the SHA-256 of
- * that path. The readable part tells a person which project it is; the hash
- * keeps two paths that read the same, such as `a/b-c` and `a-b/c`, apart.
+ * The name of a project's directory below `Projects/`: the canonical path of
+ * the project with every character that is not an ASCII letter or digit
+ * turned into `-`, then `-` and the first 16 hexadecimal digits of the
+ * SHA-256 of that path. On Linux and macOS the separator before the project's
+ * own folder becomes `--`: `/home/ada/Projects/example` is
+ * `-home-ada-Projects--example-<hash>`. On Windows every separator is one
+ * `-`: `C:\Users\Ada\source\repos\example` is
+ * `C--Users-Ada-source-repos-example-<hash>`. The readable part tells a person
+ * which project it is; the hash keeps two paths that read the same apart.
  */
-export function projectKey(canonicalPath: string): string {
-	const readable = canonicalPath.replace(/[^A-Za-z0-9]/g, '-');
+export function projectKey(platform: Platform, canonicalPath: string): string {
+	let readable = encode(canonicalPath);
+	if (platform !== 'win32') {
+		const last = canonicalPath.lastIndexOf('/');
+		if (last > 0) {
+			readable = `${encode(canonicalPath.slice(0, last))}--${encode(canonicalPath.slice(last + 1))}`;
+		}
+	}
 	const hash = createHash('sha256').update(canonicalPath, 'utf8').digest('hex').slice(0, 16);
 	return `${readable}-${hash}`;
 }
@@ -65,7 +79,7 @@ export interface ProjectDirectories {
 
 export function projectDirectories(platform: Platform, agencelandHomePath: string, canonicalProjectPath: string): ProjectDirectories {
 	const join = pathOf(platform).join;
-	const root = join(agencelandHomePath, 'Projects', projectKey(canonicalProjectPath));
+	const root = join(agencelandHomePath, 'Projects', projectKey(platform, canonicalProjectPath));
 	return { root, memory: join(root, 'memory'), sessions: join(root, 'sessions') };
 }
 
