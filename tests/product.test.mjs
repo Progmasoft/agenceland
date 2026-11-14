@@ -57,6 +57,21 @@ test("product.json names Agenceland and Open VSX", () => {
   }
 });
 
+test("the Agenceland extension is a core extension of the product", () => {
+  const extension = JSON.parse(
+    readFileSync(
+      new URL("../extensions/agenceland/package.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(ours.agencelandCoreExtensions, [
+    `${extension.publisher}.${extension.name}`,
+  ]);
+  // Always on, so the extension itself must say what it does where it is
+  // not trusted instead of being turned off there.
+  assert.equal(extension.capabilities.untrustedWorkspaces.supported, "limited");
+});
+
 test("Copilot keeps no rights and no updates", () => {
   const trusted = JSON.stringify(ours.trustedExtensionAuthAccess);
   assert.doesNotMatch(trusted, /copilot/i);

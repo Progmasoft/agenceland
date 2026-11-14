@@ -33,13 +33,21 @@ jobs:
         with:
           node-version: ${{ steps.upstream.outputs.node }}
 
+      - name: Install the test dependencies
+        run: npm ci
+
+      - name: Type-check the extensions
+        run: npm run typecheck
+
       - name: Run the tests with coverage
         run: >-
-          node --test --experimental-test-coverage
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
+          --test --experimental-test-coverage
           --test-coverage-include='scripts/**'
+          --test-coverage-include='extensions/*/src/**'
           --test-reporter=spec --test-reporter-destination=stdout
           --test-reporter=lcov --test-reporter-destination=lcov.info
-          'tests/**/*.test.mjs'
+          'tests/**/*.test.mjs' 'extensions/*/tests/**/*.test.ts'
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -94,17 +102,29 @@ jobs:
       - name: Prepare Code - OSS
         run: scripts/prepare.sh
 
+      # No token in the environment: pull-request code and install scripts
+      # run in this step.
       - name: Build
-        env:
-          # Raises the GitHub API limit of the downloads the build makes.
-          GITHUB_TOKEN: ${{ github.token }}
         run: scripts/build.sh linux-x64
+
+      # The product build transpiles the workbench without type-checking it;
+      # this checks what patches/ changed in it.
+      - name: Type-check the patched sources
+        working-directory: vscode
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: corepack pnpm run typecheck-client
 
       - name: Check the product
         run: |
           test -x VSCode-linux-x64/bin/agenceland
           jq -e '.nameShort == "Agenceland" and .extensionsGallery.serviceUrl == "https://open-vsx.org/vscode/gallery"' \
             VSCode-linux-x64/resources/app/product.json
+          test ! -e VSCode-linux-x64/resources/app/extensions/copilot
+          jq -e '.name == "agenceland" and (.main | startswith("./dist/"))' \
+            VSCode-linux-x64/resources/app/extensions/agenceland/package.json
+          test -f VSCode-linux-x64/resources/app/extensions/agenceland/dist/extension.js
+          jq -e '.agencelandCoreExtensions == ["progmasoft.agenceland"]' VSCode-linux-x64/resources/app/product.json
 
       - name: Pack
         run: tar -czf Agenceland-linux-x64.tar.gz VSCode-linux-x64

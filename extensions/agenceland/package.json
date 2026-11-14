@@ -1,0 +1,32 @@
+{
+  "name": "agenceland",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "progmasoft",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "%virtualWorkspaces%"
+    },
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "%untrustedWorkspaces%"
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "agenceland.showProjectContext",
+        "title": "%command.showProjectContext%",
+        "category": "Agenceland"
+      }
+    ]
+  }
+}

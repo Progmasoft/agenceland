@@ -22,9 +22,13 @@
   dependencyDashboard: true,
   vulnerabilityAlerts: { enabled: false },
 
-  enabledManagers: ["github-actions"],
+  enabledManagers: ["github-actions", "npm"],
 
   packageRules: [
     { matchManagers: ["github-actions"], groupName: "GitHub Actions" },
+    // jsonc-parser and @types/vscode follow the Code - OSS release of
+    // upstream.json, not their own latest release.
+    { matchManagers: ["npm"], matchPackageNames: ["jsonc-parser", "@types/vscode", "typescript"], enabled: false },
+    { matchManagers: ["npm"], groupName: "Test tools" },
   ],
 }
