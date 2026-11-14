@@ -39,3 +39,15 @@ test('a later layer wins; objects merge key by key, arrays are replaced', () => 
 	assert.deepEqual(merged, { mode: 'auto', sandbox: { network: false, allow: ['b'] }, models: ['y'] });
 	assert.deepEqual(mergeSettings([]), {});
 });
+
+test('a key named __proto__ stays a key and changes no prototype', () => {
+	const parsed = parseSettings('{ "__proto__": { "polluted": true }, "a": { "__proto__": { "b": 1 } } }');
+	assert.equal(parsed.ok, true);
+	if (!parsed.ok) {
+		return;
+	}
+	const merged = mergeSettings([{}, parsed.settings]);
+	assert.equal(Object.getPrototypeOf(merged), Object.prototype);
+	assert.equal(({} as Record<string, unknown>)['polluted'], undefined);
+	assert.equal((merged as Record<string, unknown>)['polluted'], undefined);
+});

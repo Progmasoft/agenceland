@@ -12,6 +12,7 @@ test('the home follows each platform', () => {
 	assert.equal(agencelandHome('linux', { XDG_CONFIG_HOME: 'relative' }, '/home/ada'), '/home/ada/.config/Agenceland');
 	assert.equal(agencelandHome('win32', { APPDATA: 'C:\\Users\\Ada\\AppData\\Roaming' }, 'C:\\Users\\Ada'), 'C:\\Users\\Ada\\AppData\\Roaming\\Agenceland');
 	assert.equal(agencelandHome('win32', {}, 'C:\\Users\\Ada'), 'C:\\Users\\Ada\\AppData\\Roaming\\Agenceland');
+	assert.equal(agencelandHome('win32', { APPDATA: '' }, 'C:\\Users\\Ada'), 'C:\\Users\\Ada\\AppData\\Roaming\\Agenceland');
 	assert.equal(userDirectory('win32', 'C:\\A\\Agenceland'), 'C:\\A\\Agenceland\\User');
 	assert.equal(userDirectory('linux', '/h/.config/Agenceland'), '/h/.config/Agenceland/User');
 });

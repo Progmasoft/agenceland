@@ -22,12 +22,14 @@ export type Environment = Readonly<Record<string, string | undefined>>;
  */
 export function agencelandHome(platform: Platform, environment: Environment, home: string): string {
 	if (platform === 'win32') {
-		const appData = environment['APPDATA'] || path.win32.join(home, 'AppData', 'Roaming');
+		// An empty APPDATA is as good as none.
+		const configured = environment.APPDATA;
+		const appData = configured !== undefined && configured !== '' ? configured : path.win32.join(home, 'AppData', 'Roaming');
 		return path.win32.join(appData, 'Agenceland');
 	}
 	// A relative XDG_CONFIG_HOME is invalid by the specification and ignored.
-	const configured = environment['XDG_CONFIG_HOME'];
-	const config = configured && path.posix.isAbsolute(configured) ? configured : path.posix.join(home, '.config');
+	const configured = environment.XDG_CONFIG_HOME;
+	const config = configured !== undefined && path.posix.isAbsolute(configured) ? configured : path.posix.join(home, '.config');
 	return path.posix.join(config, 'Agenceland');
 }
 
@@ -78,9 +80,9 @@ export interface ProjectDirectories {
 }
 
 export function projectDirectories(platform: Platform, agencelandHomePath: string, canonicalProjectPath: string): ProjectDirectories {
-	const join = pathOf(platform).join;
-	const root = join(agencelandHomePath, 'Projects', projectKey(platform, canonicalProjectPath));
-	return { root, memory: join(root, 'memory'), sessions: join(root, 'sessions') };
+	const p = pathOf(platform);
+	const root = p.join(agencelandHomePath, 'Projects', projectKey(platform, canonicalProjectPath));
+	return { root, memory: p.join(root, 'memory'), sessions: p.join(root, 'sessions') };
 }
 
 /**

@@ -20,12 +20,14 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('agenceland.showProjectContext', async () => {
 			output.clear();
 			output.show(true);
-			output.appendLine(await describeContext());
+			try {
+				output.appendLine(await describeContext());
+			} catch (error) {
+				output.appendLine(`The project context could not be read: ${error instanceof Error ? error.message : String(error)}`);
+			}
 		}),
 	);
 }
-
-export function deactivate(): void { }
 
 function platform(): Platform {
 	const current = process.platform;
@@ -98,8 +100,11 @@ async function projectRoot(folder: string): Promise<string> {
 	}
 }
 
+// The paths below are built from the Agenceland home and the open folders,
+// not taken from text a project or a model wrote.
 function isFile(file: string): boolean {
 	try {
+		// eslint-disable-next-line security/detect-non-literal-fs-filename -- see above
 		return fs.statSync(file).isFile();
 	} catch {
 		return false;
@@ -108,6 +113,7 @@ function isFile(file: string): boolean {
 
 function readText(file: string): string | undefined {
 	try {
+		// eslint-disable-next-line security/detect-non-literal-fs-filename -- see above
 		return fs.readFileSync(file, 'utf8');
 	} catch {
 		return undefined;

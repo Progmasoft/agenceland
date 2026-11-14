@@ -26,7 +26,7 @@ export const settingsLayers: readonly SettingsLayer[] = [
 	{ scope: 'local', file: '.agenceland/settings.local.json' },
 ];
 
-export type Settings = { readonly [key: string]: unknown };
+export type Settings = Readonly<Record<string, unknown>>;
 
 /** What a settings file held, or why it could not be read. */
 export type ParsedSettings =
@@ -73,10 +73,13 @@ export function mergeSettings(layers: readonly Settings[]): Settings {
 }
 
 function mergeTwo(below: Settings, above: Settings): Settings {
-	const result: { [key: string]: unknown } = { ...below };
+	// A Map, and Object.fromEntries, which defines its keys as own
+	// properties: a settings file that names __proto__ gets a key of that
+	// name, not a new prototype for the merged settings.
+	const result = new Map<string, unknown>(Object.entries(below));
 	for (const [key, value] of Object.entries(above)) {
-		const current = result[key];
-		result[key] = isObject(current) && isObject(value) ? mergeTwo(current, value) : value;
+		const current = result.get(key);
+		result.set(key, isObject(current) && isObject(value) ? mergeTwo(current, value) : value);
 	}
-	return result;
+	return Object.fromEntries(result);
 }
