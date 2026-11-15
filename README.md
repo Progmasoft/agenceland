@@ -62,3 +62,4 @@ On Linux, `$XDG_CONFIG_HOME` replaces `~/.config` when it is set; on macOS Agenc
 
 [MIT](LICENSE.txt). Code - OSS is under the [MIT license](https://github.com/microsoft/vscode/blob/main/LICENSE.txt)
 of Microsoft. Agenceland is not affiliated with Microsoft.
+Progmasoft's own code is also covered by the [Progmasoft Patent Grant 1.1](PATENTS.md).
