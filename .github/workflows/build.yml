@@ -56,6 +56,41 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  core:
+    name: Agent core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    defaults:
+      run:
+        shell: bash
+        working-directory: core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # rustup reads core/rust-toolchain.toml and installs that toolchain with clippy and rustfmt.
+      - name: Install the Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - name: Check the formatting
+        run: cargo fmt --check
+
+      - name: Lint with Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Run the tests
+        run: cargo test --locked
+
+      - name: Build the documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --no-deps --locked
+
   coverage:
     name: Coverage upload
     # Fork pull requests cannot receive the OIDC token Codecov needs.
@@ -138,11 +173,12 @@ jobs:
   required:
     name: CI Required
     if: always()
-    needs: [test, linux-x64]
+    needs: [test, core, linux-x64]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - env:
           TEST: ${{ needs.test.result }}
+          CORE: ${{ needs.core.result }}
           BUILD: ${{ needs.linux-x64.result }}
-        run: test "$TEST" = success && test "$BUILD" = success
+        run: test "$TEST" = success && test "$CORE" = success && test "$BUILD" = success

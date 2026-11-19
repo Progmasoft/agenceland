@@ -13,6 +13,7 @@ Agenceland changes:
 | `patches/` | Changes to the Code - OSS sources, applied in name order. |
 | `removed-paths.txt` | Paths of Code - OSS that Agenceland does not ship, such as the built-in GitHub Copilot extension. |
 | `extensions/` | The built-in extensions of Agenceland, added to those of Code - OSS. `agenceland` holds its agents; it is part of the product (`agencelandCoreExtensions` in `product.json`), so it is always on, cannot be disabled, and is not listed in the Extensions view. |
+| `core/` | `agenceland-core`, the agent core, in Rust: sessions in Git worktrees of their own, the permission modes, the file tools and the session record, behind JSON-RPC. Agenceland and its IntelliJ IDEA plugin are two front ends to it. |
 | `scripts/` | `prepare.sh` fetches and patches the sources; `build.sh` builds them for one platform. |
 | `tests/` | Tests of the scripts, run with `node --test`. |
 
@@ -35,6 +36,14 @@ The tests and the type check need only Node.js:
 npm ci
 npm run typecheck   # the extensions, with the compiler options of Code - OSS
 npm test
+```
+
+The agent core needs Rust; `core/rust-toolchain.toml` names the version:
+
+```bash
+cd core
+cargo test --locked
+cargo clippy --all-targets --locked -- -D warnings
 ```
 
 ## Where Agenceland keeps its files
