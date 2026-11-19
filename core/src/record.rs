@@ -126,6 +126,7 @@ fn now() -> u64 {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::PathBuf;
 
     use serde_json::json;
 
@@ -133,8 +134,12 @@ mod tests {
 
     #[test]
     fn events_come_back_in_order() {
-        let path =
-            std::env::temp_dir().join(format!("agenceland-record-{}.jsonl", std::process::id()));
+        // Below the crate's own target directory, not the temporary directory other users share.
+        let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-scratch");
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join(format!("record-{}.jsonl", std::process::id()));
         let _ = fs::remove_file(&path);
         let mut record = Record::create(&path).unwrap();
         record

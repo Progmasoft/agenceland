@@ -105,19 +105,7 @@ pub fn read_message(input: &mut impl BufRead) -> io::Result<Option<Vec<u8>>> {
         if line.is_empty() {
             break;
         }
-        let (name, value) = line
-            .split_once(':')
-            .ok_or_else(|| invalid(format!("'{line}' is not a header")))?;
-        if name.trim().eq_ignore_ascii_case("content-length") {
-            let parsed: usize = value
-                .trim()
-                .parse()
-                .map_err(|_| invalid(format!("'{}' is not a length", value.trim())))?;
-            if parsed > MAX_MESSAGE {
-                return Err(invalid(format!(
-                    "a message of {parsed} bytes is over {MAX_MESSAGE}"
-                )));
-            }
+        if let Some(parsed) = content_length(line)? {
             length = Some(parsed);
         }
     }
@@ -125,6 +113,26 @@ pub fn read_message(input: &mut impl BufRead) -> io::Result<Option<Vec<u8>>> {
     let mut body = vec![0; length];
     input.read_exact(&mut body)?;
     Ok(Some(body))
+}
+
+/// The length a header line gives, `None` for a header other than `Content-Length`.
+fn content_length(line: &str) -> io::Result<Option<usize>> {
+    let (name, value) = line
+        .split_once(':')
+        .ok_or_else(|| invalid(format!("'{line}' is not a header")))?;
+    if !name.trim().eq_ignore_ascii_case("content-length") {
+        return Ok(None);
+    }
+    let value = value.trim();
+    let parsed: usize = value
+        .parse()
+        .map_err(|_| invalid(format!("'{value}' is not a length")))?;
+    if parsed > MAX_MESSAGE {
+        return Err(invalid(format!(
+            "a message of {parsed} bytes is over {MAX_MESSAGE}"
+        )));
+    }
+    Ok(Some(parsed))
 }
 
 /// Writes `message` in a frame and flushes it.

@@ -129,15 +129,22 @@ impl Server {
                 "protocolVersion": PROTOCOL_VERSION,
             })),
             "session/create" => self.create(parse(params)?),
-            "permission/check" => self.check(&parse(params)?),
-            "file/read" => self.read(&parse(params)?),
-            "file/write" => self.write(&parse(params)?),
-            "session/close" => self.close(&parse(params)?),
             "session/replay" => replay_session(&parse(params)?),
             "shutdown" => {
                 self.stopping = true;
                 Ok(Value::Null)
             }
+            _ => self.call_in_session(method, params),
+        }
+    }
+
+    /// The methods that act on an open session.
+    fn call_in_session(&mut self, method: &str, params: Value) -> Result<Value, RpcError> {
+        match method {
+            "permission/check" => self.check(&parse(params)?),
+            "file/read" => self.read(&parse(params)?),
+            "file/write" => self.write(&parse(params)?),
+            "session/close" => self.close(&parse(params)?),
             _ => Err(RpcError::new(
                 codes::METHOD_NOT_FOUND,
                 format!("no method {method}"),

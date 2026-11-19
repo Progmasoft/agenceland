@@ -70,7 +70,9 @@ impl Core {
 }
 
 fn scratch(name: &str) -> PathBuf {
-    let path = std::env::temp_dir().join(format!("agenceland-core-{name}-{}", std::process::id()));
+    // Cargo's directory for the temporary files of integration tests, inside the target directory.
+    let path =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&path);
     fs::create_dir_all(&path).unwrap();
     path
@@ -92,6 +94,8 @@ fn repository(root: &Path) -> PathBuf {
     let repository = root.join("repository");
     fs::create_dir_all(&repository).unwrap();
     git(&repository, &["init", "--quiet", "--initial-branch=main"]);
+    // Git for Windows turns LF into CRLF in a checkout by default; the test compares the bytes.
+    git(&repository, &["config", "core.autocrlf", "false"]);
     fs::write(repository.join("README.md"), "# Example\n").unwrap();
     git(&repository, &["add", "README.md"]);
     git(&repository, &["commit", "--quiet", "-m", "Start"]);

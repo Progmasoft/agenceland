@@ -119,73 +119,96 @@ impl Files {
             )));
         }
         let (relative, full) = self.resolve(path)?;
-        let current = match fs::read(&full) {
-            Ok(bytes) => Some(Version::of(&bytes)),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
-            Err(error) => return Err(io_error(&full, &error)),
-        };
-        if current != self.seen.get(&relative).copied() {
-            return Err(FileError::Stale(match current {
-                Some(_) if self.seen.contains_key(&relative) => {
-                    format!("{path} changed since it was last read; read it again")
-                }
-                Some(_) => format!("{path} was never read; read it first"),
-                None => format!("{path} was deleted since it was last read"),
-            }));
-        }
-        if let Some(parent) = full.parent() {
-            fs::create_dir_all(parent).map_err(|error| io_error(parent, &error))?;
-        }
-        let temporary = full.with_file_name(format!(
-            ".{}.agenceland-{}",
-            full.file_name().unwrap_or_default().to_string_lossy(),
-            std::process::id()
-        ));
-        fs::write(&temporary, text).map_err(|error| io_error(&temporary, &error))?;
-        fs::rename(&temporary, &full).map_err(|error| {
-            let _ = fs::remove_file(&temporary);
-            io_error(&full, &error)
-        })?;
+        self.check_fresh(path, &relative, &full)?;
+        replace(&full, text)?;
         self.seen.insert(relative, Version::of(text.as_bytes()));
         Ok(())
     }
 
+    /// Refuses a write to `full` when it no longer holds what the agent last read or wrote.
+    fn check_fresh(&self, path: &str, relative: &Path, full: &Path) -> Result<(), FileError> {
+        let current = match fs::read(full) {
+            Ok(bytes) => Some(Version::of(&bytes)),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+            Err(error) => return Err(io_error(full, &error)),
+        };
+        let seen = self.seen.get(relative).copied();
+        if current == seen {
+            return Ok(());
+        }
+        Err(FileError::Stale(match (current, seen) {
+            (Some(_), Some(_)) => format!("{path} changed since it was last read; read it again"),
+            (Some(_), None) => format!("{path} was never read; read it first"),
+            (None, _) => format!("{path} was deleted since it was last read"),
+        }))
+    }
+
     /// `path` relative to the worktree and joined to it, after checking that it stays inside.
     fn resolve(&self, path: &str) -> Result<(PathBuf, PathBuf), FileError> {
-        let outside = || FileError::Outside(format!("{path} is not a path inside the worktree"));
-        let mut relative = PathBuf::new();
-        for component in Path::new(path).components() {
-            match component {
-                Component::Normal(part) => relative.push(part),
-                Component::CurDir => {}
-                Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
-                    return Err(outside());
-                }
-            }
-        }
-        if relative.as_os_str().is_empty() || path.contains('\0') {
-            return Err(outside());
-        }
-        // The worktree's .git leads to the repository: its hooks and config run outside the sandbox.
-        if relative.components().next() == Some(Component::Normal(".git".as_ref())) {
-            return Err(FileError::Outside(format!(
-                "{path} is in .git, which the agent may not touch"
-            )));
-        }
+        let relative = relative_path(path)?;
         let full = self.root.join(&relative);
         // A symbolic link may lead out: what the nearest existing ancestor resolves to must be inside.
         let mut existing = full.as_path();
         while fs::symlink_metadata(existing).is_err() {
-            existing = existing.parent().ok_or_else(outside)?;
+            existing = existing.parent().ok_or_else(|| outside(path))?;
         }
         let resolved = existing
             .canonicalize()
             .map_err(|error| io_error(existing, &error))?;
         if !resolved.starts_with(&self.root) {
-            return Err(outside());
+            return Err(outside(path));
         }
         Ok((relative, full))
     }
+}
+
+/// `path` as a relative path of normal components: no `..`, root, prefix or NUL, not empty and
+/// not in `.git`.
+fn relative_path(path: &str) -> Result<PathBuf, FileError> {
+    if path.contains('\0') {
+        return Err(outside(path));
+    }
+    let mut relative = PathBuf::new();
+    for component in Path::new(path).components() {
+        match component {
+            Component::Normal(part) => relative.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(outside(path));
+            }
+        }
+    }
+    if relative.as_os_str().is_empty() {
+        return Err(outside(path));
+    }
+    // The worktree's .git leads to the repository: its hooks and config run outside the sandbox.
+    if relative.components().next() == Some(Component::Normal(".git".as_ref())) {
+        return Err(FileError::Outside(format!(
+            "{path} is in .git, which the agent may not touch"
+        )));
+    }
+    Ok(relative)
+}
+
+/// Replaces `full` with `text` in one step, through a temporary file beside it.
+fn replace(full: &Path, text: &str) -> Result<(), FileError> {
+    if let Some(parent) = full.parent() {
+        fs::create_dir_all(parent).map_err(|error| io_error(parent, &error))?;
+    }
+    let temporary = full.with_file_name(format!(
+        ".{}.agenceland-{}",
+        full.file_name().unwrap_or_default().to_string_lossy(),
+        std::process::id()
+    ));
+    fs::write(&temporary, text).map_err(|error| io_error(&temporary, &error))?;
+    fs::rename(&temporary, full).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        io_error(full, &error)
+    })
+}
+
+fn outside(path: &str) -> FileError {
+    FileError::Outside(format!("{path} is not a path inside the worktree"))
 }
 
 fn io_error(path: &Path, error: &io::Error) -> FileError {
@@ -200,8 +223,11 @@ mod tests {
     use super::{FileError, Files};
 
     fn worktree(name: &str) -> PathBuf {
-        let root =
-            std::env::temp_dir().join(format!("agenceland-files-{name}-{}", std::process::id()));
+        // Below the crate's own target directory, not the temporary directory other users share.
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-scratch")
+            .join(format!("files-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         root
